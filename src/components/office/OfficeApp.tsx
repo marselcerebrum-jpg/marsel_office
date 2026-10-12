@@ -121,8 +121,8 @@ function TopBar({ user, tasks, b, agentCount }: { user: OfficeUser; tasks: { sta
   const setQuality = useOffice((s) => s.setQuality);
   const catalogOpen = useOffice((s) => s.catalogOpen);
   const [menu, setMenu] = useState(false);
-  const pending = tasks.filter((t) => t.status === "review" && t.userId === user.id).length;
-  const running = tasks.filter((t) => ["routing", "gathering", "meeting"].includes(t.status)).length;
+  const pending = tasks.filter((t) => ["review", "delivered"].includes(t.status) && t.userId === user.id).length;
+  const running = tasks.filter((t) => ["routing", "gathering", "meeting", "planning", "executing"].includes(t.status)).length;
 
   // Naik lift: muncul di depan pintu lift lantai tujuan.
   const goFloor = (f: FloorId) => useOffice.getState().teleportTo({ x: b.elevator.x, z: b.elevator.z + 1.4, floor: f });
@@ -204,7 +204,7 @@ function TopBar({ user, tasks, b, agentCount }: { user: OfficeUser; tasks: { sta
               </div>
               {user.role === "admin" && (
                 <a href="/admin" className="block px-3 py-2 hover:bg-slate-50">
-                  👥 Kelola tim
+                  ⚙️ Pengaturan admin
                 </a>
               )}
               <button
@@ -229,24 +229,25 @@ function MeetingTicker({ onOpen, onGo }: { onOpen: () => void; onGo: () => void 
   const task = useOffice((s) => s.task);
   const panel = useOffice((s) => s.panel);
   const speakingId = useOffice((s) => s.speakingId);
-  if (!task || panel === "task" || ["approved", "rejected"].includes(task.status)) return null;
-  const live = ["routing", "gathering", "meeting"].includes(task.status);
+  if (!task || panel === "task" || ["approved", "rejected", "done"].includes(task.status)) return null;
+  const meeting = ["routing", "gathering", "meeting"].includes(task.status);
+  const live = meeting || ["planning", "executing"].includes(task.status);
   return (
     <div className="pointer-events-auto absolute left-1/2 top-[68px] z-10 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-full bg-brand-navy/90 py-1.5 pl-4 pr-1.5 text-sm text-white shadow-xl backdrop-blur">
       <span
-        className={`h-2.5 w-2.5 shrink-0 rounded-full ${live ? "animate-pulse bg-emerald-400" : task.status === "review" ? "bg-amber-400" : "bg-red-400"}`}
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${live ? "animate-pulse bg-emerald-400" : ["review", "delivered"].includes(task.status) ? "bg-amber-400" : "bg-red-400"}`}
       />
       <span className="min-w-0 truncate">
         <b>{STATUS_LABEL[task.status]}</b> · {task.title}
         {speakingId && <span className="text-white/60"> · 🎤 sedang bicara</span>}
       </span>
-      {live && (
+      {meeting && (
         <button onClick={onGo} className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25">
           Ke ruang rapat
         </button>
       )}
       <button onClick={onOpen} className="shrink-0 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold hover:bg-amber-600">
-        {task.status === "review" ? "Review" : "Lihat"}
+        {task.status === "review" ? "Review usulan" : task.status === "delivered" ? "Review hasil" : "Lihat"}
       </button>
     </div>
   );

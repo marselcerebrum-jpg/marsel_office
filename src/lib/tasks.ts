@@ -1,7 +1,13 @@
 import "server-only";
 import { db } from "./db";
 
-export type TaskStatus = "routing" | "gathering" | "meeting" | "review" | "approved" | "rejected" | "failed";
+/**
+ * Alur: routing → gathering → meeting → review → (approved | rejected)
+ * atau, bila disetujui untuk dikerjakan: review → planning → executing → delivered → done.
+ */
+export type TaskStatus =
+  | "routing" | "gathering" | "meeting" | "review" | "approved" | "rejected" | "failed"
+  | "planning" | "executing" | "delivered" | "done";
 
 export type Task = {
   id: number;

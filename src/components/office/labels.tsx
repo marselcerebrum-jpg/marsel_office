@@ -68,8 +68,19 @@ export function LabelLayer({ agents, b }: { agents: Agent[]; b: Building }) {
     return "";
   });
   const byId = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
+  const deliverables = useOffice((s) => s.deliverables);
+  // Siapa yang sedang bekerja (tahap eksekusi): penulis hasil, atau Reality Checker saat QA.
+  const working = new Map<string, { verb: string; title: string; text: string }>();
+  for (const d of deliverables) {
+    if (d.status === "working" || d.status === "revising") {
+      working.set(d.assignee, { verb: d.status === "revising" ? "🔧 Memperbaiki" : "✍️ Mengerjakan", title: d.title, text: d.content });
+    } else if (d.status === "qa") {
+      working.set("testing-reality-checker", { verb: "🔍 Memeriksa", title: d.title, text: "" });
+    }
+  }
 
   const ids = new Set(nearby);
+  working.forEach((_, id) => ids.add(id));
   if (hasActiveFilters(filters)) {
     const matched = agents.filter((a) => matchesFilters(a, filters));
     if (matched.length <= 30) matched.forEach((a) => ids.add(a.id));
@@ -101,6 +112,7 @@ export function LabelLayer({ agents, b }: { agents: Agent[]; b: Building }) {
         if (!a || !s) return null;
         const strong = id === selectedId || id === hoveredId;
         const talking = id === speakingId;
+        const work = working.get(id);
         return (
           <div
             key={id}
@@ -108,6 +120,14 @@ export function LabelLayer({ agents, b }: { agents: Agent[]; b: Building }) {
             className="absolute left-0 top-0 flex origin-bottom flex-col items-center"
             style={{ display: "none" }}
           >
+            {work && (
+              <div className="mb-1.5 w-max max-w-[260px] rounded-2xl bg-violet-50 px-3 py-2 text-left text-[12px] leading-snug text-slate-800 shadow-xl ring-1 ring-violet-200">
+                <div className="mb-0.5 font-bold text-violet-800">
+                  {work.verb}: {work.title}
+                </div>
+                {work.text && <div className="text-slate-600">{work.text.length > 140 ? `…${work.text.slice(-140)}` : work.text}</div>}
+              </div>
+            )}
             {talking && speech && (
               <div className="mb-1.5 w-max max-w-[260px] rounded-2xl bg-white px-3 py-2 text-left text-[12px] leading-snug text-slate-800 shadow-xl ring-1 ring-slate-200">
                 {speech.length > 180 ? `…${speech.slice(-180)}` : speech}
@@ -117,7 +137,7 @@ export function LabelLayer({ agents, b }: { agents: Agent[]; b: Building }) {
             <div className="text-3xl leading-none drop-shadow">{a.emoji}</div>
             <div
               className="mt-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[13px] font-semibold text-white shadow"
-              style={{ background: talking ? "#059669" : strong ? "#111827" : "rgba(17,24,39,0.72)" }}
+              style={{ background: talking ? "#059669" : work ? "#7C3AED" : strong ? "#111827" : "rgba(17,24,39,0.72)" }}
             >
               {talking ? "🎤 " : ""}
               {a.name}

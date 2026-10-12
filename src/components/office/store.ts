@@ -13,7 +13,38 @@ export type Filters = {
 export type Quality = "tinggi" | "sedang" | "rendah";
 export type Panel = null | "compose" | "tasks" | "task" | "chat";
 
-export type TaskStatus = "routing" | "gathering" | "meeting" | "review" | "approved" | "rejected" | "failed";
+export type TaskStatus =
+  | "routing" | "gathering" | "meeting" | "review" | "approved" | "rejected" | "failed"
+  | "planning" | "executing" | "delivered" | "done";
+
+export type DeliverableType = "document" | "report" | "content" | "spreadsheet" | "code";
+export type Deliverable = {
+  id: number;
+  key: string;
+  title: string;
+  type: DeliverableType;
+  assignee: string;
+  instructions: string;
+  dependsOn: string[];
+  status: "pending" | "working" | "qa" | "revising" | "done" | "failed";
+  content: string;
+  qaNotes: string | null;
+  attempts: number;
+  revisionNote: string | null;
+  position: number;
+};
+
+export type ActionRequest = {
+  id: number;
+  deliverableId: number | null;
+  agentId: string;
+  integration: string;
+  input: unknown;
+  reason: string | null;
+  status: "pending" | "approved" | "rejected" | "done" | "failed";
+  result: string | null;
+  createdAt: string;
+};
 
 export type TaskMessage = {
   id: number;
@@ -59,6 +90,8 @@ type OfficeState = {
   /** Tugas yang sedang ditampilkan di ruang rapat 3D + panel. */
   task: TaskDetail | null;
   messages: TaskMessage[];
+  deliverables: Deliverable[];
+  actions: ActionRequest[];
   speakingId: string | null;
   /** Agen yang sedang tidak di mejanya (berjalan / di ruang rapat). */
   awayIds: Set<string>;
@@ -78,7 +111,10 @@ type OfficeState = {
   setQuality: (q: Quality) => void;
   openPanel: (p: Panel) => void;
   setNearTaskDesk: (v: boolean) => void;
-  setTask: (t: TaskDetail | null, messages?: TaskMessage[]) => void;
+  setTask: (t: TaskDetail | null, messages?: TaskMessage[], deliverables?: Deliverable[], actions?: ActionRequest[]) => void;
+  upsertDeliverable: (d: Deliverable) => void;
+  appendDeliverable: (id: number, text: string) => void;
+  upsertAction: (a: ActionRequest) => void;
   patchTask: (patch: Partial<TaskDetail>) => void;
   setMessages: (fn: (m: TaskMessage[]) => TaskMessage[]) => void;
   setSpeaking: (id: string | null) => void;
@@ -109,6 +145,8 @@ export const useOffice = create<OfficeState>((set) => ({
   nearTaskDesk: false,
   task: null,
   messages: [],
+  deliverables: [],
+  actions: [],
   speakingId: null,
   awayIds: new Set(),
   composeSeed: [],
@@ -131,7 +169,16 @@ export const useOffice = create<OfficeState>((set) => ({
   },
   openPanel: (p) => set((st) => ({ panel: p, composeSeed: p === "compose" && st.panel !== "compose" ? st.composeSeed : [] })),
   setNearTaskDesk: (v) => set({ nearTaskDesk: v }),
-  setTask: (t, messages) => set({ task: t, messages: messages ?? [] }),
+  setTask: (t, messages, deliverables, actions) => set({ task: t, messages: messages ?? [], deliverables: deliverables ?? [], actions: actions ?? [] }),
+  // Saat mulai/ulang ditulis, isi dikosongkan lalu diisi lagi oleh potongan teks (d_delta).
+  upsertDeliverable: (d) =>
+    set((s) => {
+      const next = { ...d, content: d.status === "working" || d.status === "revising" ? "" : d.content };
+      const list = s.deliverables.some((x) => x.id === d.id) ? s.deliverables.map((x) => (x.id === d.id ? next : x)) : [...s.deliverables, next];
+      return { deliverables: list.sort((x, y) => x.position - y.position || x.id - y.id) };
+    }),
+  appendDeliverable: (id, text) => set((s) => ({ deliverables: s.deliverables.map((x) => (x.id === id ? { ...x, content: x.content + text } : x)) })),
+  upsertAction: (a) => set((s) => ({ actions: s.actions.some((x) => x.id === a.id) ? s.actions.map((x) => (x.id === a.id ? a : x)) : [...s.actions, a] })),
   patchTask: (patch) => set((s) => (s.task ? { task: { ...s.task, ...patch } } : {})),
   setMessages: (fn) => set((s) => ({ messages: fn(s.messages) })),
   setSpeaking: (id) => set({ speakingId: id }),

@@ -88,6 +88,59 @@ CREATE TABLE IF NOT EXISTS agent_overrides (
   updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Hasil kerja tahap eksekusi (satu baris per pekerjaan dari pembagian tugas).
+CREATE TABLE IF NOT EXISTS deliverables (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  item_key TEXT NOT NULL,
+  title TEXT NOT NULL,
+  type TEXT NOT NULL,
+  assignee TEXT NOT NULL,
+  instructions TEXT NOT NULL,
+  depends_on TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'pending',
+  content TEXT NOT NULL DEFAULT '',
+  qa_notes TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  revision_note TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_deliverables_task ON deliverables(task_id, position);
+
+-- Aplikasi internal yang bisa dipanggil agen lewat webhook.
+CREATE TABLE IF NOT EXISTS integrations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  url TEXT NOT NULL,
+  method TEXT NOT NULL DEFAULT 'POST',
+  headers TEXT NOT NULL DEFAULT '{}',
+  input_example TEXT NOT NULL DEFAULT '{}',
+  auto_approve INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Permintaan aksi dari agen ke integrasi; dijalankan setelah disetujui.
+CREATE TABLE IF NOT EXISTS actions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  deliverable_id INTEGER REFERENCES deliverables(id) ON DELETE SET NULL,
+  agent_id TEXT NOT NULL,
+  integration TEXT NOT NULL,
+  input TEXT NOT NULL,
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  result TEXT,
+  decided_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_actions_task ON actions(task_id, id);
 `;
 
 const g = globalThis as unknown as { __officeDb?: DatabaseSync };

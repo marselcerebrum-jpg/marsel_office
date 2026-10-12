@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useOffice, type TaskDetail, type TaskMessage } from "./store";
+import { useOffice, type ActionRequest, type Deliverable, type TaskDetail, type TaskMessage } from "./store";
 
 export type ProviderInfo = { id: string; label: string; models: string[] };
 
@@ -17,14 +17,27 @@ export async function api<T>(url: string, init?: RequestInit & { json?: unknown 
   return data;
 }
 
-let providersCache: Promise<ProviderInfo[]> | null = null;
+let providersCache: Promise<{ providers: ProviderInfo[]; driveEnabled: boolean }> | null = null;
+const loadProviders = () => (providersCache ??= api<{ providers: ProviderInfo[]; driveEnabled: boolean }>("/api/providers"));
+
 export function useProviders() {
   const [providers, setProviders] = useState<ProviderInfo[] | null>(null);
   useEffect(() => {
-    providersCache ??= api<{ providers: ProviderInfo[] }>("/api/providers").then((d) => d.providers);
-    providersCache.then(setProviders).catch(() => setProviders([]));
+    loadProviders()
+      .then((d) => setProviders(d.providers))
+      .catch(() => setProviders([]));
   }, []);
   return providers;
+}
+
+export function useDriveEnabled() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    loadProviders()
+      .then((d) => setOn(d.driveEnabled))
+      .catch(() => {});
+  }, []);
+  return on;
 }
 
 /** Pilihan model terakhir diingat per perangkat. */
@@ -52,7 +65,7 @@ export function useModelChoice(providers: ProviderInfo[] | null) {
 
 export type TaskSummary = TaskDetail;
 
-const RUNNING = ["routing", "gathering", "meeting"];
+const RUNNING = ["routing", "gathering", "meeting", "planning", "executing"];
 
 /**
  * Daftar tugas (dipoll) + langganan event untuk tugas yang sedang difokuskan.
@@ -80,7 +93,7 @@ export function useTaskSync(meId: number) {
       const s = useOffice.getState();
       switch (e.type) {
         case "snapshot": {
-          s.setTask(e.task as TaskDetail, e.messages as TaskMessage[]);
+          s.setTask(e.task as TaskDetail, e.messages as TaskMessage[], (e.deliverables ?? []) as Deliverable[], (e.actions ?? []) as ActionRequest[]);
           const live = (e.messages as TaskMessage[]).find((m) => m.streaming);
           s.setSpeaking(live?.agentId ?? null);
           break;
@@ -107,6 +120,15 @@ export function useTaskSync(meId: number) {
         case "error":
           s.patchTask({ error: e.message });
           break;
+        case "deliverable":
+          s.upsertDeliverable(e.d as Deliverable);
+          break;
+        case "d_delta":
+          s.appendDeliverable(e.id, e.text);
+          break;
+        case "action":
+          s.upsertAction(e.a as ActionRequest);
+          break;
       }
     };
   }, []);
@@ -121,7 +143,7 @@ export function useTaskSync(meId: number) {
       if (running && (!st.task || !RUNNING.includes(st.task.status)) && st.task?.id !== running.id) {
         focus(running.id);
       } else if (!st.task && !autoFocused.current) {
-        const mine = d.tasks.find((t) => t.status === "review" && t.userId === meId);
+        const mine = d.tasks.find((t) => ["review", "delivered"].includes(t.status) && t.userId === meId);
         if (mine) focus(mine.id);
       }
       autoFocused.current = true;
@@ -152,6 +174,10 @@ export const STATUS_LABEL: Record<string, string> = {
   approved: "Disetujui",
   rejected: "Ditolak",
   failed: "Gagal",
+  planning: "Membagi pekerjaan",
+  executing: "Sedang dikerjakan",
+  delivered: "Hasil siap direview",
+  done: "Selesai",
 };
 
 export const STATUS_STYLE: Record<string, string> = {
@@ -162,4 +188,8 @@ export const STATUS_STYLE: Record<string, string> = {
   approved: "bg-green-600 text-white",
   rejected: "bg-slate-300 text-slate-700",
   failed: "bg-red-100 text-red-800",
+  planning: "bg-violet-100 text-violet-800",
+  executing: "bg-violet-100 text-violet-800",
+  delivered: "bg-amber-100 text-amber-900",
+  done: "bg-green-600 text-white",
 };

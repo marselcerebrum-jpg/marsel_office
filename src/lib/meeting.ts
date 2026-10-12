@@ -14,23 +14,27 @@ export type MeetingEvent =
   | { type: "delta"; id: number; text: string }
   | { type: "message_end"; id: number }
   | { type: "result"; content: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "deliverable"; d: unknown }
+  | { type: "d_delta"; id: number; text: string }
+  | { type: "action"; a: unknown };
 
-type Live = { emitter: EventEmitter; partial: Map<number, string>; running: boolean };
+/** partial = pesan rapat yang sedang ditulis; partialD = hasil kerja yang sedang ditulis. */
+type Live = { emitter: EventEmitter; partial: Map<number, string>; partialD: Map<number, string>; running: boolean };
 const g = globalThis as unknown as { __meetings?: Map<number, Live> };
 const meetings = (g.__meetings ??= new Map());
 
 export function liveOf(taskId: number): Live {
   let l = meetings.get(taskId);
   if (!l) {
-    l = { emitter: new EventEmitter(), partial: new Map(), running: false };
+    l = { emitter: new EventEmitter(), partial: new Map(), partialD: new Map(), running: false };
     l.emitter.setMaxListeners(100);
     meetings.set(taskId, l);
   }
   return l;
 }
 
-function emit(taskId: number, e: MeetingEvent) {
+export function emit(taskId: number, e: MeetingEvent) {
   liveOf(taskId).emitter.emit("event", e);
 }
 
@@ -318,8 +322,10 @@ export function agentOptions() {
 /** Rapat yang tercatat berjalan tapi tidak hidup di proses ini (mis. setelah restart) ditandai gagal. */
 export function reconcileStale(tasks: Task[]) {
   for (const t of tasks) {
-    if (["routing", "gathering", "meeting"].includes(t.status) && !liveOf(t.id).running) {
-      const error = "Rapat terputus karena server dimulai ulang. Klik \"Ulangi rapat\".";
+    if (["routing", "gathering", "meeting", "planning", "executing"].includes(t.status) && !liveOf(t.id).running) {
+      const error = ["planning", "executing"].includes(t.status)
+        ? "Pengerjaan terputus karena server dimulai ulang. Klik \"Lanjutkan pengerjaan\"."
+        : "Rapat terputus karena server dimulai ulang. Klik \"Ulangi rapat\".";
       updateTask(t.id, { status: "failed", error });
       t.status = "failed";
       t.error = error;

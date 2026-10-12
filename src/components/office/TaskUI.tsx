@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { DIVISION_LABELS_ID, type Agent, type Division } from "@/lib/types";
 import type { Building } from "./building";
 import { useOffice, type TaskMessage } from "./store";
+import { ActionsTab, DeliverablesTab } from "./WorkUI";
 import { api, STATUS_LABEL, STATUS_STYLE, useModelChoice, useProviders, type ProviderInfo, type TaskSummary } from "./useTasks";
 
 export type Leads = { chair: string; leads: Record<string, string> };
@@ -323,7 +324,16 @@ export function TaskComposer({
 
 /* ------------------------------------------------------------- panel rapat */
 
-const STEPS = ["routing", "gathering", "meeting", "review"] as const;
+const STEPS = ["routing", "gathering", "meeting", "review", "executing", "delivered"] as const;
+const STEP_LABEL: Record<(typeof STEPS)[number], string> = {
+  routing: "Peserta",
+  gathering: "Berkumpul",
+  meeting: "Rapat",
+  review: "Usulan",
+  executing: "Dikerjakan",
+  delivered: "Hasil",
+};
+type Tab = "rapat" | "hasil" | "aksi";
 
 export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agents: Agent[]; meId: number; isAdmin: boolean; onGoMeeting: () => void; onBack: () => void }) {
   const task = useOffice((s) => s.task);
@@ -334,16 +344,23 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBrief, setShowBrief] = useState(false);
+  const deliverables = useOffice((s) => s.deliverables);
+  const actions = useOffice((s) => s.actions);
+  const [tabChoice, setTab] = useState<Tab | null>(null);
 
   if (!task) return null;
   const canReview = task.userId === meId || isAdmin;
-  const stepIdx = STEPS.indexOf(task.status as (typeof STEPS)[number]);
+  const execPhase = ["planning", "executing", "delivered", "done"].includes(task.status) || deliverables.length > 0;
+  const tab: Tab = tabChoice ?? (execPhase ? "hasil" : "rapat");
+  const pendingActions = actions.filter((a) => a.status === "pending").length;
+  const stepIdx = ({ planning: 4, approved: 3, rejected: 3, done: 5 } as Record<string, number>)[task.status] ?? STEPS.indexOf(task.status as (typeof STEPS)[number]);
 
-  const act = async (action: "approve" | "revise" | "reject" | "retry") => {
+  const act = async (action: "approve" | "revise" | "reject" | "retry" | "accept", execute?: boolean) => {
     setBusy(true);
     setError(null);
     try {
-      await api(`/api/tasks/${task.id}/review`, { method: "POST", json: { action, note } });
+      await api(`/api/tasks/${task.id}/review`, { method: "POST", json: { action, note, execute } });
+      if (execute) setTab("hasil");
       setNote("");
     } catch (e) {
       setError((e as Error).message);
@@ -380,8 +397,8 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
         <div className="mt-3 flex items-center gap-1">
           {STEPS.map((s, i) => (
             <div key={s} className="flex flex-1 flex-col gap-1">
-              <div className={`h-1.5 rounded-full ${i <= stepIdx || ["approved", "rejected"].includes(task.status) ? "bg-amber-400" : "bg-white/20"}`} />
-              <span className="text-[10px] text-white/70">{STATUS_LABEL[s]}</span>
+              <div className={`h-1.5 rounded-full ${i <= stepIdx ? "bg-amber-400" : "bg-white/20"}`} />
+              <span className="text-[10px] text-white/70">{STEP_LABEL[s]}</span>
             </div>
           ))}
         </div>
@@ -411,7 +428,38 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
         )}
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm">
+      {(execPhase || actions.length > 0) && (
+        <nav className="flex gap-1 border-b border-slate-200 px-3 pt-2 text-sm">
+          {(
+            [
+              ["rapat", "💬 Rapat"],
+              ["hasil", `📦 Hasil Kerja${deliverables.length ? ` (${deliverables.filter((d) => d.key !== "final").length})` : ""}`],
+              ["aksi", `⚙️ Aksi${pendingActions ? ` (${pendingActions})` : ""}`],
+            ] as [Tab, string][]
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`rounded-t-lg px-3 py-1.5 font-semibold ${tab === id ? "bg-amber-100 text-amber-900" : id === "aksi" && pendingActions ? "text-red-600" : "text-slate-500 hover:text-slate-800"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      {tab === "hasil" && (
+        <div className="flex-1 overflow-y-auto px-4 py-3 text-sm">
+          <DeliverablesTab agents={agents} canReview={canReview} />
+          {task.error && <div className="mt-3 rounded-lg bg-red-50 p-3 text-red-700">{task.error}</div>}
+        </div>
+      )}
+      {tab === "aksi" && (
+        <div className="flex-1 overflow-y-auto px-4 py-3 text-sm">
+          <ActionsTab agents={agents} canReview={canReview} />
+        </div>
+      )}
+      <div className={`flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm ${tab === "rapat" ? "" : "hidden"}`}>
         <button onClick={() => setShowBrief((v) => !v)} className="text-xs font-semibold text-amber-700 hover:underline">
           {showBrief ? "Sembunyikan detail tugas" : "Lihat detail tugas"}
         </button>
@@ -444,8 +492,21 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
           />
           {error && <div className="text-xs text-red-700">{error}</div>}
           <div className="flex flex-wrap gap-2">
-            <button disabled={busy} onClick={() => act("approve")} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50">
-              ✅ Setujui
+            <button
+              disabled={busy}
+              onClick={() => act("approve", true)}
+              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50"
+              title="Tim langsung membagi dan mengerjakan usulan sampai hasilnya jadi"
+            >
+              🚀 Setujui & kerjakan
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => act("approve")}
+              className="rounded-lg border border-green-600 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50 disabled:opacity-50"
+              title="Simpan usulan saja tanpa dikerjakan"
+            >
+              Setujui saja
             </button>
             <button
               disabled={busy || note.trim().length < 5}
@@ -464,13 +525,31 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
       {canReview && task.status === "failed" && (
         <div className="border-t border-slate-200 px-4 py-3">
           <button disabled={busy} onClick={() => act("retry")} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-white hover:bg-slate-900 disabled:opacity-50">
-            🔁 Ulangi rapat
+            {deliverables.length ? "🔁 Lanjutkan pengerjaan" : "🔁 Ulangi rapat"}
           </button>
+        </div>
+      )}
+      {task.status === "delivered" && (
+        <div className="space-y-2 border-t border-slate-200 bg-amber-50 px-4 py-3">
+          <div className="text-sm font-bold text-amber-900">📦 Semua hasil kerja siap direview</div>
+          <p className="text-xs text-amber-900/80">Buka tiap hasil untuk mengunduh atau meminta revisi. Bila sudah sesuai, terima hasilnya.</p>
+          {error && <div className="text-xs text-red-700">{error}</div>}
+          {canReview && (
+            <button disabled={busy} onClick={() => act("accept")} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50">
+              ✅ Terima hasil & tutup tugas
+            </button>
+          )}
+        </div>
+      )}
+      {task.status === "done" && <div className="border-t bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">🎉 Tugas selesai. Hasil kerja sudah diterima.</div>}
+      {["planning", "executing"].includes(task.status) && (
+        <div className="border-t border-slate-200 bg-violet-50 px-4 py-2 text-xs font-semibold text-violet-800">
+          {task.status === "planning" ? "🗂️ Pemimpin rapat sedang membagi pekerjaan…" : "✍️ Para spesialis sedang bekerja di meja masing-masing. Hasil muncul satu per satu."}
         </div>
       )}
       {["approved", "rejected"].includes(task.status) && (
         <div className={`border-t px-4 py-3 text-sm font-semibold ${task.status === "approved" ? "bg-green-50 text-green-800" : "bg-slate-50 text-slate-600"}`}>
-          {task.status === "approved" ? "✅ Usulan disetujui." : "✖ Usulan ditolak."}
+          {task.status === "approved" ? "✅ Usulan disetujui (tanpa pengerjaan)." : "✖ Usulan ditolak."}
           {task.reviewNote && <span className="font-normal"> Catatan: {task.reviewNote}</span>}
         </div>
       )}
@@ -587,7 +666,7 @@ export function TaskList({ tasks, meId, onOpen }: { tasks: TaskSummary[]; meId: 
             <button onClick={() => onOpen(t.id)} className="w-full rounded-xl p-3 text-left hover:bg-slate-50">
               <div className="flex items-center gap-2">
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_STYLE[t.status]}`}>{STATUS_LABEL[t.status]}</span>
-                {t.status === "review" && t.userId === meId && <span className="text-[11px] font-bold text-amber-700">Perlu keputusan Anda</span>}
+                {["review", "delivered"].includes(t.status) && t.userId === meId && <span className="text-[11px] font-bold text-amber-700">Perlu keputusan Anda</span>}
               </div>
               <div className="mt-1 font-semibold">{t.title}</div>
               <div className="text-xs text-slate-500">

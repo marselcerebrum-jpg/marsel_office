@@ -47,6 +47,9 @@ function SeatedAgent({ agent, b, dimmed }: { agent: Agent; b: Building; dimmed: 
   const ref = useRef<THREE.Mesh>(null);
   const isSelected = useOffice((s) => s.selectedId === agent.id);
   const isHovered = useOffice((s) => s.hoveredId === agent.id);
+  const isWorking = useOffice((s) =>
+    s.deliverables.some((d) => (d.assignee === agent.id && (d.status === "working" || d.status === "revising")) || (agent.id === "testing-reality-checker" && d.status === "qa")),
+  );
   const phase = useMemo(() => (agent.id.length * 1.37) % 6.28, [agent.id]);
   const y = floorY(seat.floor);
 
@@ -54,7 +57,7 @@ function SeatedAgent({ agent, b, dimmed }: { agent: Agent; b: Building; dimmed: 
     const m = ref.current;
     if (!m) return;
     const t = clock.elapsedTime + phase;
-    m.position.y = y + (isSelected ? Math.abs(Math.sin(t * 4)) * 0.1 : Math.sin(t * 2) * 0.008);
+    m.position.y = y + (isSelected ? Math.abs(Math.sin(t * 4)) * 0.1 : isWorking ? Math.abs(Math.sin(t * 14)) * 0.025 : Math.sin(t * 2) * 0.008);
     m.rotation.y = isSelected ? Math.sin(t * 2) * 0.15 : Math.sin(t * 0.5) * 0.06;
   });
 
@@ -83,6 +86,12 @@ function SeatedAgent({ agent, b, dimmed }: { agent: Agent; b: Building; dimmed: 
           st.walkTo({ ...deskFront(seat), floor: seat.floor });
         }}
       />
+      {isWorking && !isSelected && (
+        <mesh rotation-x={-Math.PI / 2} position={[seat.x, y + 0.03, seat.z]}>
+          <ringGeometry args={[0.5, 0.62, 40]} />
+          <meshBasicMaterial color="#8B5CF6" transparent opacity={0.85} toneMapped={false} />
+        </mesh>
+      )}
       {(isSelected || isHovered) && (
         <mesh rotation-x={-Math.PI / 2} position={[seat.x, y + 0.03, seat.z]}>
           <ringGeometry args={[0.5, 0.66, 40]} />

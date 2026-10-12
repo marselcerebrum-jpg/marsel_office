@@ -78,3 +78,23 @@ Ruang **Produk Cerebrum** (lantai 1, di samping Ruang Rapat) berisi 1 Product Ma
 - **Mengisi prompt:** login sebagai admin, klik tokohnya, lalu **✏️ Edit**. Ganti setiap `[ISI: …]`, termasuk nama aplikasi dan deskripsi singkat. Isian disimpan di database dan langsung dipakai di chat dan rapat berikutnya. Tombol *Kembalikan ke template* menghapus isian.
 - **Saat rapat:** bila tugas menyangkut produk Cerebrum, pemimpin rapat memanggil Product Manager Cerebrum beserta 1–4 aplikasi yang paling terdampak, dipilih berdasarkan deskripsi singkat tiap aplikasi. Anda juga bisa mencentang aplikasi sendiri di Meja Tugas.
 - **Menambah divisi khusus lain:** tambahkan entri di `custom-agents/divisions.json`, buat folder dengan file `.md` agennya, jalankan `npm run import-agents`, lalu tambahkan ruangannya di `PLAN` pada `src/components/office/building.ts`.
+
+## Dari usulan sampai pekerjaan selesai
+
+Setelah rapat, tekan **🚀 Setujui & kerjakan** di panel tugas. Tim langsung bekerja sampai hasilnya jadi:
+
+1. **Pembagian kerja:** pemimpin rapat memecah usulan menjadi hingga 8 pekerjaan. Setiap pekerjaan punya penanggung jawab (agen spesialis yang paling cocok) dan jenis hasil: dokumen bisnis, laporan, konten, spreadsheet, atau kode.
+2. **Pengerjaan:** setiap agen bekerja di mejanya. Di kantor, tokohnya bercincin ungu dan ada balon berisi teks yang sedang ditulis. Pekerjaan yang saling bergantung dikerjakan berurutan.
+3. **QA:** Reality Checker memeriksa setiap hasil. Bila belum layak, agen memperbaikinya, maksimal 2 kali.
+4. **Laporan Akhir:** berisi rangkuman semua hasil, catatan QA, dan langkah selanjutnya.
+5. **Review Anda:** buka tiap hasil di tab **📦 Hasil Kerja** untuk membaca, mengunduh (.md / .docx / .xlsx / .zip kode), menyimpan ke Google Drive, atau **meminta revisi** hasil tertentu. Bila sudah sesuai, tekan **Terima hasil & tutup tugas**. Tombol **Unduh semua (.zip)** mengemas semua hasil dalam berbagai format.
+
+Biaya: setiap pekerjaan memakai 2 panggilan model atau lebih (pengerjaan + QA, ditambah perbaikan bila ada). Pekerjaan berjenis kode memakai batas jawaban dan *effort* yang lebih tinggi.
+
+## Integrasi aplikasi internal
+
+Di **Pengaturan admin → Integrasi**, daftarkan aplikasi internal sebagai webhook (nama, slug, deskripsi untuk agen, URL, header rahasia, contoh input).
+
+- Saat mengerjakan tugas, agen bisa meminta aksi ke aplikasi tersebut.
+- Permintaan muncul di tab **⚙️ Aksi** dan baru dijalankan setelah disetujui. Persetujuan otomatis bisa diaktifkan per integrasi.
+- Aplikasi Anda menerima `POST` berisi `{ input, reason, agent, task: { id, title } }`. Respons (status dan isi) dicatat di permintaan aksi.
