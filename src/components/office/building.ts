@@ -83,11 +83,11 @@ const PLAN: Record<FloorId, { north: RoomSpec[]; south: RoomSpec[] }> = {
     south: [
       { id: "lobby", kind: "lobby", label: "Lobby & Meja Tugas", color: "#D97706", w: 15 },
       { id: "meeting", kind: "meeting", label: "Ruang Rapat", color: "#F59E0B", w: 19 },
+      { id: "cerebrum-product", kind: "division" },
       { id: "sales", kind: "division" },
       { id: "product", kind: "division" },
       { id: "support", kind: "division" },
       { id: "finance", kind: "division" },
-      { id: "healthcare", kind: "division" },
     ],
   },
   1: {
@@ -105,6 +105,7 @@ const PLAN: Record<FloorId, { north: RoomSpec[]; south: RoomSpec[] }> = {
       { id: "academic", kind: "division" },
       { id: "spatial-computing", kind: "division" },
       { id: "research", kind: "division" },
+      { id: "healthcare", kind: "division" },
     ],
   },
 };

@@ -9,7 +9,8 @@ import { useOffice, type TaskMessage } from "./store";
 import { api, STATUS_LABEL, STATUS_STYLE, useModelChoice, useProviders, type ProviderInfo, type TaskSummary } from "./useTasks";
 
 export type Leads = { chair: string; leads: Record<string, string> };
-const MAX_PARTICIPANTS = 8;
+const MAX_PARTICIPANTS = 10;
+const CEREBRUM = "cerebrum-product";
 
 /* ------------------------------------------------------------ pemilih model */
 
@@ -78,16 +79,21 @@ export function TaskComposer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const byId = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
+  const appAgents = useMemo(() => agents.filter((a) => a.division === CEREBRUM && a.id !== leads.leads[CEREBRUM]), [agents, leads]);
+  const appIds = useMemo(() => new Set(appAgents.map((a) => a.id)), [appAgents]);
+  const pickedApps = extras.filter((id) => appIds.has(id));
+  const otherExtras = extras.filter((id) => !appIds.has(id));
+  const pmJoins = pickedApps.length > 0 && !(routing === "manual" && picked.has(CEREBRUM));
 
-  const total = 1 + (routing === "manual" ? picked.size : 0) + extras.length;
+  const total = 1 + (routing === "manual" ? picked.size : 0) + extras.length + (pmJoins ? 1 : 0);
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
     return agents
-      .filter((a) => !extras.includes(a.id) && a.id !== leads.chair)
+      .filter((a) => !extras.includes(a.id) && a.id !== leads.chair && !appIds.has(a.id))
       .filter((a) => `${a.name} ${a.roleId ?? ""} ${a.descriptionId ?? ""}`.toLowerCase().includes(q))
       .slice(0, 6);
-  }, [query, agents, extras, leads.chair]);
+  }, [query, agents, extras, leads.chair, appIds]);
 
   const submit = async () => {
     if (!model) return;
@@ -207,10 +213,46 @@ export function TaskComposer({
             </div>
           )}
 
+          {appAgents.length > 0 && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="text-xs font-bold text-orange-900">🧭 Aplikasi Cerebrum yang dipanggil</div>
+                <div className="text-[11px] text-orange-800/80">
+                  {pickedApps.length ? `${pickedApps.length} dipilih` : "opsional"}
+                </div>
+              </div>
+              <p className="mb-2 text-[11px] text-orange-900/80">
+                {pickedApps.length
+                  ? "Product Specialist aplikasi terpilih ikut rapat bersama Product Manager Cerebrum."
+                  : routing === "auto"
+                    ? "Kosongkan agar pemimpin rapat memilih sendiri aplikasi yang terdampak (bila tugasnya menyangkut produk Cerebrum)."
+                    : picked.has(CEREBRUM)
+                      ? "Kosong: Product Manager Cerebrum akan memilih aplikasi yang terdampak."
+                      : "Centang aplikasi agar Product Specialist-nya ikut rapat."}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {appAgents.map((a) => {
+                  const on = extras.includes(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      disabled={!on && total >= MAX_PARTICIPANTS}
+                      onClick={() => setExtras(on ? extras.filter((x) => x !== a.id) : [...extras, a.id])}
+                      className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs disabled:opacity-40 ${on ? "border-orange-500 bg-orange-500 font-semibold text-white" : "border-orange-200 bg-white hover:border-orange-400"}`}
+                    >
+                      <span>{a.emoji}</span>
+                      {a.app ?? a.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <div className="mb-1 text-xs font-semibold text-slate-600">Undang agen tertentu (opsional)</div>
             <div className="flex flex-wrap gap-1">
-              {extras.map((id) => (
+              {otherExtras.map((id) => (
                 <span key={id} className="flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-white">
                   {byId.get(id)?.emoji} {byId.get(id)?.name}
                   <button onClick={() => setExtras(extras.filter((x) => x !== id))} aria-label="Hapus">
@@ -381,7 +423,7 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
             {list
               .filter((m) => m.kind !== "brief")
               .map((m) => (
-                <Message key={m.id} m={m} agent={m.agentId ? byId.get(m.agentId) : undefined} />
+                <Message key={m.id} m={m} agent={m.agentId ? byId.get(m.agentId) : undefined} task={task} />
               ))}
           </div>
         ))}
@@ -436,7 +478,55 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
   );
 }
 
-function Message({ m, agent }: { m: TaskMessage; agent?: Agent }) {
+function exportMarkdown(task: { title: string; brief: string; userName: string; revision: number }, content: string) {
+  return `# ${task.title}
+
+_Pemberi tugas: ${task.userName} · revisi ${task.revision} · Agent Desk_
+
+## Detail tugas
+
+${task.brief}
+
+---
+
+${content}
+`;
+}
+
+function ResultActions({ task, content }: { task: { title: string; brief: string; userName: string; revision: number }; content: string }) {
+  const [copied, setCopied] = useState(false);
+  const md = exportMarkdown(task, content);
+  return (
+    <div className="mt-3 flex gap-2 border-t border-amber-200 pt-2">
+      <button
+        onClick={() =>
+          navigator.clipboard.writeText(md).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          })
+        }
+        className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold hover:bg-slate-50"
+      >
+        {copied ? "Tersalin ✓" : "📋 Salin"}
+      </button>
+      <button
+        onClick={() => {
+          const url = URL.createObjectURL(new Blob([md], { type: "text/markdown;charset=utf-8" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${task.title.replace(/[^p{L}p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 60) || "usulan"}-rev${task.revision}.md`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }}
+        className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold hover:bg-slate-50"
+      >
+        ⬇️ Unduh .md
+      </button>
+    </div>
+  );
+}
+
+function Message({ m, agent, task }: { m: TaskMessage; agent?: Agent; task: { title: string; brief: string; userName: string; revision: number } }) {
   if (m.kind === "review") {
     return (
       <div className="rounded-xl border-l-4 border-amber-500 bg-amber-50 p-3">
@@ -468,6 +558,7 @@ function Message({ m, agent }: { m: TaskMessage; agent?: Agent }) {
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content || "…"}</ReactMarkdown>
           {m.streaming && <span className="inline-block h-3.5 w-1.5 animate-pulse bg-amber-500 align-middle" />}
         </div>
+        {summary && !m.streaming && m.content && <ResultActions task={{ ...task, revision: m.revision }} content={m.content} />}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 export type QualityFlag = {
-  code: "stub" | "no-h1" | "no-vibe" | "garbled-emoji" | "external-deps" | "very-long";
+  code: "stub" | "no-h1" | "no-vibe" | "garbled-emoji" | "external-deps" | "very-long" | "unfilled";
   label: string;
   severity: "info" | "warn" | "error";
 };
@@ -27,11 +27,15 @@ export type Agent = {
   regions: Region[];
   flags: QualityFlag[];
   runbooks: RunbookRef[];
+  /** Agen khusus Agent Desk (bisa diedit admin). */
+  custom?: boolean;
+  /** Nama aplikasi untuk Product Specialist Cerebrum. */
+  app?: string | null;
 };
 
-export type Region = "global" | "china" | "us" | "korea" | "france";
+export type Region = "global" | "china" | "us" | "korea" | "france" | "indonesia";
 
-export type Division = { id: string; label: string; icon: string; color: string };
+export type Division = { id: string; label: string; icon: string; color: string; custom?: boolean };
 
 export type Runbook = {
   slug: string;
@@ -48,6 +52,7 @@ export const REGION_LABELS: Record<Region, string> = {
   us: "Amerika Serikat",
   korea: "Korea",
   france: "Prancis",
+  indonesia: "Indonesia",
 };
 
 export const DIVISION_LABELS_ID: Record<string, string> = {
@@ -69,4 +74,5 @@ export const DIVISION_LABELS_ID: Record<string, string> = {
   specialized: "Spesialis",
   support: "Operasional & Dukungan",
   testing: "Testing & QA",
+  "cerebrum-product": "Produk Cerebrum",
 };

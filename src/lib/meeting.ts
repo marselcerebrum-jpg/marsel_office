@@ -1,6 +1,6 @@
 import "server-only";
 import { EventEmitter } from "node:events";
-import { getAgent, getAgentBody, getAgents, getDivisions } from "./agents-server";
+import { getAgent, getAgentBody, getAgents, getAppAgents, getDivisions } from "./agents-server";
 import { getLeads } from "./leads";
 import { LANGUAGE_RULE, streamText, type Provider } from "./llm";
 import { addMessage, getTask, listMessages, setMessageContent, updateTask, type Task, type TaskStatus } from "./tasks";
@@ -39,7 +39,9 @@ function emit(taskId: number, e: MeetingEvent) {
 /** Waktu yang diberikan agar para lead sempat berjalan ke ruang rapat di layar. */
 const GATHER_MS = Number(process.env.MEETING_GATHER_MS ?? 14000);
 const ROUNDS = Math.min(2, Math.max(1, Number(process.env.MEETING_ROUNDS ?? 1)));
-export const MAX_PARTICIPANTS = 8;
+export const MAX_PARTICIPANTS = 10;
+export const CEREBRUM = "cerebrum-product";
+const MAX_APPS = 4;
 
 /* ------------------------------------------------------------------ prompt */
 
@@ -74,14 +76,36 @@ function taskBlock(task: Task) {
 
 /* ------------------------------------------------------------------ routing */
 
-/** Peserta dari divisi terpilih: ketua rapat + lead tiap divisi + agen tambahan. */
+/**
+ * Peserta: ketua rapat + lead tiap divisi + agen tambahan. Bila ada Product Specialist
+ * aplikasi Cerebrum yang ikut, Product Manager Cerebrum (lead-nya) otomatis ikut.
+ */
 export function participantsFor(divisions: string[], extraAgents: string[]): string[] {
   const { chair, leads } = getLeads();
-  const ids = [chair, ...divisions.map((d) => leads[d]).filter(Boolean), ...extraAgents];
+  const apps = new Set(getAppAgents(leads[CEREBRUM]).map((a) => a.id));
+  const divs = new Set(divisions);
+  if (extraAgents.some((id) => apps.has(id))) divs.add(CEREBRUM);
+  const ids = [chair, ...[...divs].map((d) => leads[d]).filter(Boolean), ...extraAgents];
   return [...new Set(ids)].filter((id) => !!getAgent(id)).slice(0, MAX_PARTICIPANTS);
 }
 
-async function routeDivisions(task: Task): Promise<string[]> {
+function parseJson<T>(text: string): T | null {
+  try {
+    return JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as T;
+  } catch {
+    return null;
+  }
+}
+
+function appOptions() {
+  const { leads } = getLeads();
+  return getAppAgents(leads[CEREBRUM])
+    .map((a) => `- ${a.id}: ${a.app ?? a.name} — ${a.descriptionId ?? a.description}`)
+    .join("\n");
+}
+
+/** Mode otomatis: pemimpin rapat memilih divisi (dan aplikasi Cerebrum bila relevan). */
+async function routeDivisions(task: Task): Promise<{ divisions: string[]; apps: string[] }> {
   const { chair, leads } = getLeads();
   const options = getDivisions()
     .filter((d) => leads[d.id])
@@ -90,28 +114,56 @@ async function routeDivisions(task: Task): Promise<string[]> {
       return `- ${d.id}: ${DIVISION_LABELS_ID[d.id] ?? d.label} — lead ${lead?.name}: ${lead?.descriptionId ?? lead?.description ?? ""}`;
     })
     .join("\n");
+  const apps = appOptions();
   const prompt = `${taskBlock(task)}
 
 Anda memimpin rapat. Pilih 2–4 divisi yang lead-nya paling relevan untuk membahas tugas ini. Pilihan divisi:
 ${options}
-
-Balas HANYA dengan JSON tanpa teks lain, format: {"divisions": ["id-divisi", ...], "agenda": "satu kalimat agenda rapat"}`;
+${apps ? `
+Bila tugas menyangkut produk PT Cerebrum, sertakan divisi "${CEREBRUM}" dan pilih 1–${MAX_APPS} aplikasi yang paling terdampak (Product Specialist-nya ikut rapat). Pilihan aplikasi:
+${apps}
+` : ""}
+Balas HANYA dengan JSON tanpa teks lain, format: {"divisions": ["id-divisi", ...], "apps": ["id-aplikasi", ...], "agenda": "satu kalimat agenda rapat"}`;
 
   const text = await streamText(task.provider as Provider, {
     model: task.model,
-    system: systemFor(chair, 'Anda sedang memilih peserta rapat. Jawab dengan JSON {"divisions": [...], "agenda": "..."}.'),
+    system: systemFor(chair, 'Anda sedang memilih peserta rapat. Jawab dengan JSON {"divisions": [...], "apps": [...], "agenda": "..."}.'),
     messages: [{ role: "user", content: prompt }],
     maxTokens: 1500,
     effort: "low",
   });
-  try {
-    const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as { divisions?: string[] };
-    const valid = (json.divisions ?? []).filter((d) => leads[d]);
-    if (valid.length) return valid.slice(0, 4);
-  } catch {
-    /* jatuh ke default di bawah */
-  }
-  return ["specialized", "project-management"];
+  const json = parseJson<{ divisions?: string[]; apps?: string[] }>(text);
+  const validApps = new Set(getAppAgents(leads[CEREBRUM]).map((a) => a.id));
+  const divisions = (json?.divisions ?? []).filter((d) => leads[d]).slice(0, 4);
+  const pickedApps = (json?.apps ?? []).filter((id) => validApps.has(id)).slice(0, MAX_APPS);
+  return { divisions: divisions.length ? divisions : ["specialized", "project-management"], apps: pickedApps };
+}
+
+/** Mode manual dengan divisi Produk Cerebrum tapi tanpa aplikasi dipilih: Product Manager Cerebrum yang memilih. */
+async function routeApps(task: Task): Promise<string[]> {
+  const { leads } = getLeads();
+  const pm = leads[CEREBRUM];
+  const apps = appOptions();
+  if (!apps || !pm) return [];
+  const text = await streamText(task.provider as Provider, {
+    model: task.model,
+    system: systemFor(pm, 'Anda sedang memilih Product Specialist aplikasi yang ikut rapat. Jawab dengan JSON {"apps": [...]}.'),
+    messages: [
+      {
+        role: "user",
+        content: `${taskBlock(task)}
+
+Pilih 1–${MAX_APPS} aplikasi PT Cerebrum yang paling terdampak tugas ini. Pilihan:
+${apps}
+
+Balas HANYA dengan JSON tanpa teks lain, format: {"apps": ["id-aplikasi", ...]}`,
+      },
+    ],
+    maxTokens: 800,
+    effort: "low",
+  });
+  const valid = new Set(getAppAgents(pm).map((a) => a.id));
+  return (parseJson<{ apps?: string[] }>(text)?.apps ?? []).filter((id) => valid.has(id)).slice(0, MAX_APPS);
 }
 
 /* ------------------------------------------------------------------ giliran */
@@ -179,9 +231,17 @@ async function runMeeting(taskId: number, divisionsHint: string[] | null) {
   const { chair } = getLeads();
 
   if (task.status === "routing") {
-    const divisions = divisionsHint ?? (await routeDivisions(task));
     const extras = task.participants.filter((id) => id !== chair);
-    setStatus(task, "gathering", participantsFor(divisions, extras));
+    let divisions: string[];
+    let apps: string[] = [];
+    if (divisionsHint) {
+      // Manual + Produk Cerebrum tanpa aplikasi dipilih: biarkan Product Manager Cerebrum memilih.
+      divisions = divisionsHint;
+      if (divisions.includes(CEREBRUM)) apps = await routeApps(task);
+    } else {
+      ({ divisions, apps } = await routeDivisions(task));
+    }
+    setStatus(task, "gathering", participantsFor(divisions, [...extras, ...apps]));
   } else {
     setStatus(task, "gathering", task.participants);
   }

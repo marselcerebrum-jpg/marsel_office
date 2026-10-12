@@ -1,0 +1,6 @@
+{
+  "_note": "Divisi khusus milik Agent Desk (di luar repo agency-agents). Agen di dalam foldernya diimpor oleh scripts/import-agents.ts dan bisa diedit admin dari aplikasi (tombol Edit prompt).",
+  "divisions": {
+    "cerebrum-product": { "label": "Produk Cerebrum", "icon": "Boxes", "color": "#F07A06" }
+  }
+}

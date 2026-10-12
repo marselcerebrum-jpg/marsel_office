@@ -106,5 +106,12 @@
     "label": "Testing",
     "icon": "FlaskConical",
     "color": "#F59E0B"
+  },
+  {
+    "id": "cerebrum-product",
+    "label": "Produk Cerebrum",
+    "icon": "Boxes",
+    "color": "#F07A06",
+    "custom": true
   }
 ]

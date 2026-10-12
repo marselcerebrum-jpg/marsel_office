@@ -71,7 +71,7 @@ export function OfficeApp({ agents, divisions, runbooks, leads, user }: OfficePr
       </Canvas>
       <LabelLayer agents={agents} b={b} />
 
-      <TopBar user={user} tasks={tasks} b={b} />
+      <TopBar user={user} tasks={tasks} b={b} agentCount={agents.length} />
       <MeetingTicker onOpen={() => useOffice.getState().openPanel("task")} onGo={goMeeting} />
       <Catalog agents={agents} divisions={divisions} runbooks={runbooks} onPick={focusAgent} />
 
@@ -92,6 +92,7 @@ export function OfficeApp({ agents, divisions, runbooks, leads, user }: OfficePr
           divisions={divisions}
           onClose={() => useOffice.getState().select(null)}
           onInvite={(id) => useOffice.getState().inviteToMeeting(id)}
+          isAdmin={user.role === "admin"}
         />
       )}
       {panel === "compose" && (
@@ -114,7 +115,7 @@ export function OfficeApp({ agents, divisions, runbooks, leads, user }: OfficePr
 
 /* ------------------------------------------------------------------- HUD */
 
-function TopBar({ user, tasks, b }: { user: OfficeUser; tasks: { status: string; userId: number }[]; b: Building }) {
+function TopBar({ user, tasks, b, agentCount }: { user: OfficeUser; tasks: { status: string; userId: number }[]; b: Building; agentCount: number }) {
   const viewFloor = useOffice((s) => s.viewFloor);
   const quality = useOffice((s) => s.quality);
   const setQuality = useOffice((s) => s.setQuality);
@@ -132,7 +133,7 @@ function TopBar({ user, tasks, b }: { user: OfficeUser; tasks: { status: string;
         <div className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5 shadow-lg backdrop-blur">
           <Image src="/brand/agent-desk-logo.png" alt="Agent Desk" width={1364} height={474} priority className="h-8 w-auto" />
           <div className="hidden border-l border-slate-200 pl-2 text-[11px] leading-tight text-slate-500 lg:block">
-            282 agen
+            {agentCount} agen
             <br />2 lantai
           </div>
         </div>

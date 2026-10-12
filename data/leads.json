@@ -1,5 +1,5 @@
 {
-  "_note": "Lead tiap divisi yang datang ke ruang rapat saat divisinya diundang. 'chair' memimpin rapat dan menyusun usulan akhir. Ubah ID agen di sini lalu restart aplikasi.",
+  "_note": "Lead tiap divisi yang datang ke ruang rapat saat divisinya diundang. 'chair' memimpin rapat dan menyusun usulan akhir. Ubah ID agen di sini lalu restart aplikasi. Divisi 'cerebrum-product' juga membawa Product Specialist aplikasi yang relevan (dipilih otomatis oleh pemimpin rapat atau oleh pemberi tugas).",
   "chair": "agents-orchestrator",
   "leads": {
     "engineering": "engineering-software-architect",
@@ -19,6 +19,7 @@
     "healthcare": "healthcare-innovation-strategist",
     "academic": "academic-statistician",
     "research": "research-synthesist",
-    "spatial-computing": "macos-spatial-metal-engineer"
+    "spatial-computing": "macos-spatial-metal-engineer",
+    "cerebrum-product": "cerebrum-product-manager"
   }
 }

@@ -9,6 +9,7 @@ import { DIVISION_LABELS_ID, REGION_LABELS, type Agent, type Division } from "@/
 import { lookFor } from "./character";
 import { Rig } from "./Rig";
 import { ChatPanel } from "./ChatPanel";
+import { AgentEditor } from "./AgentEditor";
 
 type Tab = "ringkasan" | "prompt" | "kualitas";
 
@@ -17,14 +18,17 @@ export function ProfilePanel({
   divisions,
   onClose,
   onInvite,
+  isAdmin,
 }: {
   agent: Agent;
   divisions: Division[];
   onClose: () => void;
   onInvite: (agentId: string) => void;
+  isAdmin: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("ringkasan");
   const [chatting, setChatting] = useState(false);
+  const [editing, setEditing] = useState(false);
   const division = divisions.find((d) => d.id === agent.division);
 
   return (
@@ -65,7 +69,18 @@ export function ProfilePanel({
         <button onClick={() => onInvite(agent.id)} className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50">
           📥 Undang ke rapat
         </button>
+        {agent.custom && isAdmin && (
+          <button onClick={() => setEditing(true)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50" title="Isi / ubah prompt agen ini">
+            ✏️ Edit
+          </button>
+        )}
       </div>
+      {agent.custom && agent.flags.some((f) => f.code === "unfilled") && (
+        <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+          ⚠️ Prompt agen ini masih berupa kerangka.{isAdmin ? " Klik ✏️ Edit untuk mengisinya." : " Minta admin untuk mengisinya."}
+        </div>
+      )}
+      {editing && <AgentEditor agent={agent} onClose={() => setEditing(false)} />}
 
       {chatting ? (
         <ChatPanel agent={agent} onBack={() => setChatting(false)} />

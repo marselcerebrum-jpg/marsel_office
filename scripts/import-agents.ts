@@ -20,6 +20,7 @@ import { parse as parseYaml } from "yaml";
 const ROOT = process.cwd();
 const SOURCE = path.resolve(ROOT, process.env.AGENCY_SOURCE ?? "../agency-agents-main");
 const OUT = path.join(ROOT, "data");
+const CUSTOM = path.join(ROOT, "custom-agents");
 
 // Sama dengan resolve_opencode_color() di scripts/convert.sh repo sumber.
 const NAMED_COLORS: Record<string, string> = {
@@ -135,8 +136,16 @@ function main() {
   fs.mkdirSync(OUT, { recursive: true });
 
   const divisionsJson = JSON.parse(fs.readFileSync(path.join(SOURCE, "divisions.json"), "utf8"));
-  const divisions = Object.entries(divisionsJson.divisions as Record<string, { label: string; icon: string; color: string }>)
-    .map(([id, d]) => ({ id, ...d }));
+  const divisions: { id: string; label: string; icon: string; color: string; custom?: boolean; root: string }[] = Object.entries(
+    divisionsJson.divisions as Record<string, { label: string; icon: string; color: string }>,
+  ).map(([id, d]) => ({ id, ...d, root: SOURCE }));
+
+  // Divisi khusus Agent Desk (mis. Produk Cerebrum) dari folder custom-agents/.
+  const customJsonPath = path.join(CUSTOM, "divisions.json");
+  if (fs.existsSync(customJsonPath)) {
+    const custom = JSON.parse(fs.readFileSync(customJsonPath, "utf8")).divisions as Record<string, { label: string; icon: string; color: string }>;
+    for (const [id, d] of Object.entries(custom)) divisions.push({ id, ...d, custom: true, root: CUSTOM });
+  }
 
   const runbooksJson = JSON.parse(fs.readFileSync(path.join(SOURCE, "strategy/runbooks.json"), "utf8"));
   const runbooks: Runbook[] = runbooksJson.runbooks;
@@ -160,7 +169,7 @@ function main() {
   const seen = new Set<string>();
 
   for (const div of divisions) {
-    const dir = path.join(SOURCE, div.id);
+    const dir = path.join(div.root, div.id);
     if (!fs.existsSync(dir)) continue;
     for (const file of walk(dir).sort()) {
       const parsed = splitFrontmatter(fs.readFileSync(file, "utf8"));
@@ -174,7 +183,7 @@ function main() {
       const description = String(fm.description ?? "").trim();
       const hs = headings(body);
       const words = body.split(/\s+/).filter(Boolean).length;
-      const rel = path.relative(SOURCE, file).replace(/\\/g, "/");
+      const rel = (div.custom ? "custom-agents/" : "") + path.relative(div.root, file).replace(/\\/g, "/");
       const subgroup = rel.split("/").length > 2 ? rel.split("/")[1] : null;
       const tools = typeof fm.tools === "string"
         ? fm.tools.split(",").map((t) => t.trim()).filter(Boolean)
@@ -191,14 +200,17 @@ function main() {
         color: resolveColor(fm.color, div.color),
         description,
         vibe: fm.vibe ? String(fm.vibe).trim() : "",
-        descriptionId: translations[id]?.description ?? null,
-        vibeId: translations[id]?.vibe ?? null,
-        roleId: translations[id]?.role ?? null,
+        // Agen khusus ditulis langsung dalam Bahasa Indonesia.
+        descriptionId: div.custom ? description : translations[id]?.description ?? null,
+        vibeId: div.custom ? (fm.vibe ? String(fm.vibe).trim() : null) : translations[id]?.vibe ?? null,
+        roleId: div.custom ? (fm.role ? String(fm.role).trim() : null) : translations[id]?.role ?? null,
+        custom: !!div.custom,
+        app: fm.app ? String(fm.app).trim() : null,
         tools,
         services: Array.isArray(fm.services) ? fm.services : [],
         words,
         sections: hs.filter((h) => h.level <= 2).map((h) => h.text).slice(0, 40),
-        regions: regionTags(name, description, body),
+        regions: div.custom ? ["indonesia"] : regionTags(name, description, body),
         flags: qualityFlags(fm, body, hs, words),
         runbooks: runbookIndex.get(id) ?? [],
       });
@@ -211,7 +223,7 @@ function main() {
 
   write("agents.json", agents);
   write("agent-bodies.json", bodies);
-  write("divisions.json", divisions);
+  write("divisions.json", divisions.map(({ root: _root, ...d }) => d));
   write("runbooks.json", runbooks.map(({ slug, title, mode, duration, summary, roster }) => ({ slug, title, mode, duration, summary, roster })));
 
   const translated = agents.filter((a) => a.descriptionId).length;

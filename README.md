@@ -70,3 +70,11 @@ Terjemahan Indonesia diambil dari `data/translations-id.json`. Agen baru yang be
 | `src/lib/llm/` | Koneksi ke Claude (Anthropic SDK), GPT (OpenAI SDK), dan mode simulasi |
 | `src/app/api/` | API: login, akun, tugas (dengan aliran event langsung), chat |
 | `data/` | Data agen, terjemahan, dan konfigurasi lead |
+
+## Divisi Produk Cerebrum (agen khusus)
+
+Ruang **Produk Cerebrum** (lantai 1, di samping Ruang Rapat) berisi 1 Product Manager Cerebrum dan 14 Product Specialist, satu per aplikasi. Kerangka prompt mereka ada di `custom-agents/cerebrum-product/`.
+
+- **Mengisi prompt:** login sebagai admin, klik tokohnya, lalu **✏️ Edit**. Ganti setiap `[ISI: …]`, termasuk nama aplikasi dan deskripsi singkat. Isian disimpan di database dan langsung dipakai di chat dan rapat berikutnya. Tombol *Kembalikan ke template* menghapus isian.
+- **Saat rapat:** bila tugas menyangkut produk Cerebrum, pemimpin rapat memanggil Product Manager Cerebrum beserta 1–4 aplikasi yang paling terdampak, dipilih berdasarkan deskripsi singkat tiap aplikasi. Anda juga bisa mencentang aplikasi sendiri di Meja Tugas.
+- **Menambah divisi khusus lain:** tambahkan entri di `custom-agents/divisions.json`, buat folder dengan file `.md` agennya, jalankan `npm run import-agents`, lalu tambahkan ruangannya di `PLAN` pada `src/components/office/building.ts`.

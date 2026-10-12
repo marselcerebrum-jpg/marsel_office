@@ -10,9 +10,13 @@ export async function streamMock(req: StreamRequest): Promise<string> {
   const last = req.messages.at(-1)?.content ?? "";
 
   let text: string;
-  if (/\{"divisions"/.test(req.system) || /Balas HANYA dengan JSON/.test(last)) {
-    const ids = [...last.matchAll(/^- ([a-z-]+):/gm)].map((m) => m[1]);
-    text = JSON.stringify({ divisions: ids.slice(0, 3), agenda: "Membahas kebutuhan, risiko, dan rencana eksekusi tugas." });
+  if (/Balas HANYA dengan JSON/.test(last)) {
+    const ids = [...last.matchAll(/^- ([a-z0-9-]+):/gm)].map((m) => m[1]);
+    const apps = ids.filter((id) => id.startsWith("cerebrum-app-")).slice(0, 2);
+    const divisions = ids.filter((id) => !id.startsWith("cerebrum-app-")).slice(0, 2);
+    // Simulasi: tugas yang menyebut "Cerebrum" mengundang divisi Produk Cerebrum + 2 aplikasi pertama.
+    if (/cerebrum/i.test(last.split("Pilihan")[0]) && apps.length) divisions.push("cerebrum-product");
+    text = JSON.stringify({ divisions, apps, agenda: "Membahas kebutuhan, risiko, dan rencana eksekusi tugas." });
   } else if (/USULAN AKHIR/.test(last)) {
     text = [
       "## Ringkasan",

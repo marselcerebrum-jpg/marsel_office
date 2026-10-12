@@ -74,6 +74,20 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);
+
+-- Isian prompt agen khusus (mis. Produk Cerebrum) yang diedit admin dari aplikasi.
+CREATE TABLE IF NOT EXISTS agent_overrides (
+  agent_id TEXT PRIMARY KEY,
+  name TEXT,
+  role TEXT,
+  app TEXT,
+  description TEXT,
+  vibe TEXT,
+  emoji TEXT,
+  body TEXT,
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
 
 const g = globalThis as unknown as { __officeDb?: DatabaseSync };

@@ -70,12 +70,14 @@ export function getTask(id: number): Task | null {
 
 export function createTask(t: {
   userId: number; title: string; brief: string; routing: "auto" | "manual"; provider: string; model: string; participants: string[];
+  /** routing = pemimpin rapat memilih peserta dulu; gathering = langsung berkumpul. */
+  status: "routing" | "gathering";
 }): number {
   const r = db()
     .prepare(
       "INSERT INTO tasks (user_id, title, brief, status, routing, provider, model, participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .run(t.userId, t.title, t.brief, t.routing === "auto" ? "routing" : "gathering", t.routing, t.provider, t.model, JSON.stringify(t.participants));
+    .run(t.userId, t.title, t.brief, t.status, t.routing, t.provider, t.model, JSON.stringify(t.participants));
   return Number(r.lastInsertRowid);
 }
 
