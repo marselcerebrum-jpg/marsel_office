@@ -1,0 +1,8 @@
+{$SITE_ADDRESS}
+
+encode zstd gzip
+
+reverse_proxy app:3000 {
+	# Jangan tahan respons streaming (rapat langsung & chat).
+	flush_interval -1
+}

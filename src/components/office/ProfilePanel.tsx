@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { DIVISION_LABELS_ID, REGION_LABELS, type Agent, type Division } from "@/lib/types";
-import { buildCharacterGeometry, lookFor } from "./characterGeometry";
+import { lookFor } from "./character";
+import { Rig } from "./Rig";
+import { ChatPanel } from "./ChatPanel";
 
 type Tab = "ringkasan" | "prompt" | "kualitas";
 
@@ -14,18 +16,19 @@ export function ProfilePanel({
   agent,
   divisions,
   onClose,
-  actions,
+  onInvite,
 }: {
   agent: Agent;
   divisions: Division[];
   onClose: () => void;
-  actions?: React.ReactNode;
+  onInvite: (agentId: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>("ringkasan");
+  const [chatting, setChatting] = useState(false);
   const division = divisions.find((d) => d.id === agent.division);
 
   return (
-    <aside className="absolute bottom-3 right-3 top-20 flex w-[min(440px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <aside className="absolute bottom-3 right-3 top-20 z-20 flex w-[min(440px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
       <div className="relative shrink-0" style={{ background: `linear-gradient(135deg, ${agent.color}33, ${division?.color ?? agent.color}55)` }}>
         <button
           onClick={onClose}
@@ -52,31 +55,46 @@ export function ProfilePanel({
         </div>
       </div>
 
-      {actions && <div className="flex shrink-0 gap-2 border-b border-slate-200 px-4 py-2">{actions}</div>}
+      <div className="flex shrink-0 gap-2 border-b border-slate-200 px-4 py-2">
+        <button
+          onClick={() => setChatting((v) => !v)}
+          className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold ${chatting ? "bg-slate-200 text-slate-800" : "bg-amber-500 text-white hover:bg-amber-600"}`}
+        >
+          {chatting ? "📇 Lihat profil" : "💬 Ajak ngobrol"}
+        </button>
+        <button onClick={() => onInvite(agent.id)} className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50">
+          📥 Undang ke rapat
+        </button>
+      </div>
 
-      <nav className="flex shrink-0 gap-1 border-b border-slate-200 px-3 pt-2 text-sm">
-        {(
-          [
-            ["ringkasan", "Ringkasan"],
-            ["prompt", "Prompt lengkap"],
-            ["kualitas", "Kualitas & label"],
-          ] as [Tab, string][]
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`rounded-t-lg px-3 py-1.5 font-semibold ${tab === id ? "bg-amber-100 text-amber-900" : "text-slate-500 hover:text-slate-800"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="flex-1 overflow-y-auto px-4 py-3 text-sm">
+      {chatting ? (
+        <ChatPanel agent={agent} onBack={() => setChatting(false)} />
+      ) : (
+        <>
+          <nav className="flex shrink-0 gap-1 border-b border-slate-200 px-3 pt-2 text-sm">
+            {(
+              [
+                ["ringkasan", "Ringkasan"],
+                ["prompt", "Prompt lengkap"],
+                ["kualitas", "Kualitas & label"],
+              ] as [Tab, string][]
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={`rounded-t-lg px-3 py-1.5 font-semibold ${tab === id ? "bg-amber-100 text-amber-900" : "text-slate-500 hover:text-slate-800"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <div className="flex-1 overflow-y-auto px-4 py-3 text-sm">
         {tab === "ringkasan" && <Summary agent={agent} />}
         {tab === "prompt" && <PromptView key={agent.id} agent={agent} />}
         {tab === "kualitas" && <Quality agent={agent} />}
-      </div>
+          </div>
+        </>
+      )}
     </aside>
   );
 }
@@ -227,23 +245,23 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export function Portrait({ agent }: { agent: Agent }) {
   return (
-    <Canvas camera={{ position: [0, 1.4, 3.1], fov: 32 }} dpr={[1, 2]} gl={{ alpha: true }}>
-      <hemisphereLight args={["#FFFFFF", "#AAB4C3", 1.2]} />
-      <directionalLight position={[2, 4, 3]} intensity={1.5} />
+    <Canvas camera={{ position: [0, 1.25, 3.2], fov: 30 }} dpr={[1, 2]} gl={{ alpha: true }}>
+      <hemisphereLight args={["#FFFFFF", "#AAB4C3", 1.3]} />
+      <directionalLight position={[2, 4, 3]} intensity={2} />
       <Spinner agent={agent} />
     </Canvas>
   );
 }
 
 function Spinner({ agent }: { agent: Agent }) {
-  const ref = useRef<THREE.Mesh>(null);
-  const geometry = useMemo(() => buildCharacterGeometry(lookFor(agent.id, agent.division, agent.color), false), [agent]);
-  const material = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true }), []);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  const ref = useRef<THREE.Group>(null);
+  const [look] = useState(() => lookFor(agent.id, agent.division, agent.color));
   useFrame(({ clock }) => {
-    if (!ref.current) return;
-    ref.current.rotation.y = Math.sin(clock.elapsedTime * 0.8) * 0.6;
-    ref.current.position.y = -0.95 + Math.sin(clock.elapsedTime * 2) * 0.02;
+    if (ref.current) ref.current.rotation.y = Math.sin(clock.elapsedTime * 0.7) * 0.5;
   });
-  return <mesh ref={ref} geometry={geometry} material={material} position={[0, -0.95, 0]} />;
+  return (
+    <group ref={ref} position={[0, -0.9, 0]}>
+      <Rig look={look} mode="stand" castShadow={false} />
+    </group>
+  );
 }

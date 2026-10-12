@@ -44,3 +44,6 @@ next-env.d.ts
 /.shots
 # database lokal
 /data/*.db*
+
+# file uji lokal
+/.scratch

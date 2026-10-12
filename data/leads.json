@@ -1,0 +1,24 @@
+{
+  "_note": "Lead tiap divisi yang datang ke ruang rapat saat divisinya diundang. 'chair' memimpin rapat dan menyusun usulan akhir. Ubah ID agen di sini lalu restart aplikasi.",
+  "chair": "agents-orchestrator",
+  "leads": {
+    "engineering": "engineering-software-architect",
+    "design": "design-ui-designer",
+    "marketing": "marketing-growth-hacker",
+    "sales": "sales-deal-strategist",
+    "product": "product-manager",
+    "project-management": "project-management-studio-producer",
+    "testing": "testing-reality-checker",
+    "security": "security-architect",
+    "finance": "finance-financial-analyst",
+    "specialized": "specialized-chief-of-staff",
+    "support": "support-support-responder",
+    "paid-media": "paid-media-auditor",
+    "game-development": "game-designer",
+    "gis": "gis-technical-consultant",
+    "healthcare": "healthcare-innovation-strategist",
+    "academic": "academic-statistician",
+    "research": "research-synthesist",
+    "spatial-computing": "macos-spatial-metal-engineer"
+  }
+}

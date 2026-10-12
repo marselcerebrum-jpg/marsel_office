@@ -1,0 +1,35 @@
+# Jalankan di VPS:  docker compose up -d --build
+# Semua konfigurasi diambil dari file .env di folder yang sama (lihat .env.example).
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /app/storage/office.db
+    volumes:
+      - office-data:/app/storage
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      # Isi SITE_ADDRESS dengan domain (mis. office.contoh.com) untuk HTTPS otomatis.
+      # Kosong = layani lewat HTTP di port 80 (akses pakai IP).
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  office-data:
+  caddy-data:
+  caddy-config:
