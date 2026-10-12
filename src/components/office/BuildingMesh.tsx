@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { FLOOR_H, floorY, ROOM_WALL_H, type Building, type FloorId, type Rect } from "./building";
-import { carpetTexture, grassTexture, materials, pavementTexture, textTexture, tileTexture, woodTexture } from "./materials";
+import { BRAND, carpetTexture, grassTexture, logoTexture, materials, pavementTexture, textTexture, tileTexture, woodTexture } from "./materials";
 import { useOffice } from "./store";
 
 export type Box = { x: number; y: number; z: number; sx: number; sy: number; sz: number; ry?: number };
@@ -337,13 +337,17 @@ function Exterior({ b }: { b: Building }) {
       <Boxes items={foliage} material={foliageMat} geometry={foliageGeo} castShadow />
       {/* papan nama di depan gedung */}
       <group position={[gx + 6, 0, front + 5]} rotation-y={-0.25}>
-        <mesh position={[0, 0.6, 0]} castShadow>
-          <boxGeometry args={[4.2, 1.2, 0.5]} />
-          <meshStandardMaterial color="#1F2937" roughness={0.6} />
+        <mesh position={[0, 0.75, 0]} castShadow>
+          <boxGeometry args={[4.4, 1.5, 0.5]} />
+          <meshStandardMaterial color={BRAND.navy} roughness={0.6} />
         </mesh>
-        <mesh position={[0, 0.65, 0.26]}>
-          <planeGeometry args={[3.9, 0.95]} />
-          <meshBasicMaterial map={textTexture("sign", "AGENCY OFFICE", { bg: "#1F2937", fg: "#F59E0B" })} toneMapped={false} />
+        <mesh position={[0, 0.8, 0.255]}>
+          <planeGeometry args={[4.1, 1.25]} />
+          <meshStandardMaterial color="#FFFFFF" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.8, 0.26]}>
+          <planeGeometry args={[3.5, 1.22]} />
+          <meshBasicMaterial map={logoTexture()} transparent toneMapped={false} />
         </mesh>
       </group>
       {/* lampu taman */}

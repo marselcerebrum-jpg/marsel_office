@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agency Office",
-  description: "Kantor virtual 3D untuk 282 agen AI The Agency",
+  title: "Agent Desk",
+  description: "Kantor virtual 3D tempat tim Anda memberi tugas ke 282 agen AI.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

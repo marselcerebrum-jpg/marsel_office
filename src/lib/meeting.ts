@@ -128,8 +128,8 @@ async function speak(task: Task, agentId: string, kind: "agent" | "summary", pro
       system: systemFor(
         agentId,
         kind === "summary"
-          ? "Anda memimpin rapat tim di Agency Office dan bertugas menyusun usulan akhir untuk direview pemberi tugas."
-          : "Anda sedang mengikuti rapat tim lintas divisi di Agency Office sebagai perwakilan bidang keahlian Anda.",
+          ? "Anda memimpin rapat tim di Agent Desk dan bertugas menyusun usulan akhir untuk direview pemberi tugas."
+          : "Anda sedang mengikuti rapat tim lintas divisi di Agent Desk sebagai perwakilan bidang keahlian Anda.",
       ),
       messages: [{ role: "user", content: prompt }],
       maxTokens: opts.maxTokens,

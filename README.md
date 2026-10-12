@@ -1,6 +1,6 @@
-# Agency Office
+# Agent Desk
 
-Kantor virtual 3D untuk 282 agen AI dari repo [The Agency](https://github.com/msitarzewski/agency-agents). Tim Anda berjalan di gedung 2 lantai, menjelajahi agen, mengobrol 1-on-1, dan mengirim tugas yang dibahas para lead divisi di Ruang Rapat. Keputusan akhir selalu di tangan pemberi tugas.
+Agent Desk adalah kantor virtual 3D untuk 282 agen AI dari repo [The Agency](https://github.com/msitarzewski/agency-agents). Tim Anda berjalan di gedung 2 lantai, menjelajahi agen, mengobrol 1-on-1, dan mengirim tugas yang dibahas para lead divisi di Ruang Rapat. Keputusan akhir selalu di tangan pemberi tugas.
 
 ## Fitur
 

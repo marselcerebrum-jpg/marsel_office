@@ -209,3 +209,19 @@ export function materials() {
   shared ??= makeShared();
   return shared;
 }
+
+/* ------------------------------------------------------------- logo brand */
+
+let logoTex: THREE.Texture | null = null;
+
+/** Logo Agent Desk (PNG transparan) untuk dinding lobby dan papan nama. */
+export function logoTexture() {
+  if (!logoTex) {
+    logoTex = new THREE.TextureLoader().load("/brand/agent-desk-logo.png");
+    logoTex.colorSpace = THREE.SRGBColorSpace;
+    logoTex.anisotropy = 8;
+  }
+  return logoTex;
+}
+
+export const BRAND = { navy: "#06304A", orange: "#F07A06", yellow: "#FDB943" };

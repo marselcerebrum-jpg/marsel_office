@@ -7,7 +7,7 @@ import type { Agent } from "@/lib/types";
 import { floorY, ROOM_WALL_H, type Building, type FloorId, type Room } from "./building";
 import { Boxes, type Box } from "./BuildingMesh";
 import { boxGeo, chairGeometry, cylGeo, makePart, mergeParts, RECEPTIONIST_LOOK, sphereGeo } from "./character";
-import { materials, screenTexture, textTexture } from "./materials";
+import { BRAND, logoTexture, materials, screenTexture, textTexture } from "./materials";
 import { Rig } from "./Rig";
 import { useOffice, type TaskDetail } from "./store";
 
@@ -215,15 +215,24 @@ function Lobby({ b }: { b: Building }) {
       <group position={[x, 0, lobby.z + 1.2]}>
         <mesh position={[0, 1.4, 0]} castShadow>
           <boxGeometry args={[6, 2.8, 0.25]} />
-          <meshStandardMaterial color="#1F2937" roughness={0.5} />
+          <meshStandardMaterial color="#FFFFFF" roughness={0.4} />
         </mesh>
-        <mesh position={[0, 1.75, 0.13]}>
-          <planeGeometry args={[5, 1.0]} />
-          <meshBasicMaterial map={textTexture("logo", "AGENCY OFFICE", { bg: "#1F2937", fg: "#FBBF24" })} toneMapped={false} />
+        {/* list oranye & navy khas brand */}
+        <mesh position={[0, 0.06, 0.13]}>
+          <boxGeometry args={[6, 0.12, 0.02]} />
+          <meshStandardMaterial color={BRAND.orange} />
         </mesh>
-        <mesh position={[0, 1.05, 0.13]}>
+        <mesh position={[0, 2.74, 0.13]}>
+          <boxGeometry args={[6, 0.12, 0.02]} />
+          <meshStandardMaterial color={BRAND.navy} />
+        </mesh>
+        <mesh position={[0, 1.65, 0.131]}>
+          <planeGeometry args={[4.4, 1.53]} />
+          <meshBasicMaterial map={logoTexture()} transparent toneMapped={false} />
+        </mesh>
+        <mesh position={[0, 0.55, 0.131]}>
           <planeGeometry args={[4, 0.35]} />
-          <meshBasicMaterial map={textTexture("logo-sub", "282 spesialis AI · siap menerima tugas Anda", { bg: "#1F2937", fg: "#CBD5E1", w: 1024, h: 90 })} toneMapped={false} />
+          <meshBasicMaterial map={textTexture("logo-sub", "282 spesialis AI · siap menerima tugas Anda", { bg: "#FFFFFF", fg: BRAND.navy, w: 1024, h: 90 })} toneMapped={false} />
         </mesh>
       </group>
 

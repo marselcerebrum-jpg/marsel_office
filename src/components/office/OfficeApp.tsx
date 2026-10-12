@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Suspense, useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
@@ -128,11 +129,11 @@ function TopBar({ user, tasks, b }: { user: OfficeUser; tasks: { status: string;
   return (
     <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 p-3">
       <div className="pointer-events-auto flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 rounded-xl bg-slate-900/90 px-3 py-2 text-white shadow-lg backdrop-blur">
-          <span className="text-xl">🏢</span>
-          <div className="leading-tight">
-            <div className="text-sm font-bold">Agency Office</div>
-            <div className="text-[11px] text-white/60">282 agen · 2 lantai</div>
+        <div className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5 shadow-lg backdrop-blur">
+          <Image src="/brand/agent-desk-logo.png" alt="Agent Desk" width={1364} height={474} priority className="h-8 w-auto" />
+          <div className="hidden border-l border-slate-200 pl-2 text-[11px] leading-tight text-slate-500 lg:block">
+            282 agen
+            <br />2 lantai
           </div>
         </div>
         <div className="flex overflow-hidden rounded-xl bg-white/95 shadow-lg" role="group" aria-label="Pindah lantai">
@@ -230,7 +231,7 @@ function MeetingTicker({ onOpen, onGo }: { onOpen: () => void; onGo: () => void 
   if (!task || panel === "task" || ["approved", "rejected"].includes(task.status)) return null;
   const live = ["routing", "gathering", "meeting"].includes(task.status);
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-[68px] z-10 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-full bg-slate-900/90 py-1.5 pl-4 pr-1.5 text-sm text-white shadow-xl backdrop-blur">
+    <div className="pointer-events-auto absolute left-1/2 top-[68px] z-10 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-3 rounded-full bg-brand-navy/90 py-1.5 pl-4 pr-1.5 text-sm text-white shadow-xl backdrop-blur">
       <span
         className={`h-2.5 w-2.5 shrink-0 rounded-full ${live ? "animate-pulse bg-emerald-400" : task.status === "review" ? "bg-amber-400" : "bg-red-400"}`}
       />

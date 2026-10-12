@@ -315,7 +315,7 @@ export function TaskPanel({ agents, meId, isAdmin, onGoMeeting, onBack }: { agen
 
   return (
     <aside className="absolute bottom-3 right-3 top-20 z-20 flex w-[min(500px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-      <div className="border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-3 text-white">
+      <div className="border-b border-slate-200 bg-gradient-to-r from-brand-navy to-[#0B3F5E] px-4 py-3 text-white">
         <div className="flex items-start gap-2">
           <button onClick={onBack} className="mt-0.5 rounded px-1.5 text-white/70 hover:bg-white/10" aria-label="Kembali ke daftar tugas">
             ←

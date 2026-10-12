@@ -5,6 +5,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Warna brand Agent Desk: aksen "amber" di seluruh UI diarahkan ke oranye logo. */
+@theme {
+  --color-amber-400: #fdb943;
+  --color-amber-500: #f07a06;
+  --color-amber-600: #d96a00;
+  --color-brand-navy: #06304a;
+}
+
 html,
 body {
   background: #e7eef6;

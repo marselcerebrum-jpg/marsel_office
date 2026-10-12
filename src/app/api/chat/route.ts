@@ -46,7 +46,7 @@ export const POST = handle(async (req: Request) => {
   while (history.length && history[0].role !== "user") history.shift();
 
   const agent = getAgent(conv.agent_id)!;
-  const system = `${getAgentBody(agent.id) ?? ""}${LANGUAGE_RULE}\n\n---\nKONTEKS: Anda sedang mengobrol langsung dengan ${user.name}, anggota tim di Agency Office.`;
+  const system = `${getAgentBody(agent.id) ?? ""}${LANGUAGE_RULE}\n\n---\nKONTEKS: Anda sedang mengobrol langsung dengan ${user.name}, anggota tim di Agent Desk.`;
   const encoder = new TextEncoder();
   const convId = conv.id;
   const provider = conv.provider as Provider;
