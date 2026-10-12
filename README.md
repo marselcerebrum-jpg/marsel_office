@@ -98,3 +98,12 @@ Di **Pengaturan admin → Integrasi**, daftarkan aplikasi internal sebagai webho
 - Saat mengerjakan tugas, agen bisa meminta aksi ke aplikasi tersebut.
 - Permintaan muncul di tab **⚙️ Aksi** dan baru dijalankan setelah disetujui. Persetujuan otomatis bisa diaktifkan per integrasi.
 - Aplikasi Anda menerima `POST` berisi `{ input, reason, agent, task: { id, title } }`. Respons (status dan isi) dicatat di permintaan aksi.
+
+## Server produksi: office.marseltech.cloud
+
+Aplikasi berjalan di VPS sebagai container `agent-desk` (folder `/opt/agent-desk`) yang hanya mendengar di `127.0.0.1:3500`. Domainnya dilayani nginx yang sudah ada di server (`/etc/nginx/sites-available/office`), dengan SSL dari Certbot yang diperbarui otomatis.
+
+- **Mengisi API key:** edit `/opt/agent-desk/.env` (isi `ANTHROPIC_API_KEY` dan/atau `OPENAI_API_KEY`, ubah `LLM_MOCK=0`), lalu jalankan `docker compose -f docker-compose.nginx.yml up -d`.
+- **Update ke versi terbaru:** salin kode baru ke `/opt/agent-desk` (mis. `git archive` dari repo, atau `git pull` bila server punya akses ke repo), lalu `docker compose -f docker-compose.nginx.yml up -d --build`. Data di volume `agent-desk_agent-desk-data` tidak hilang.
+- **Log:** `docker logs -f agent-desk`.
+- **Cadangan database:** `docker cp agent-desk:/app/storage/office.db ./office-backup.db`.
